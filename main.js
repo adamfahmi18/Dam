@@ -4,26 +4,65 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const wa = t => `https://wa.me/${S.wa}?text=${encodeURIComponent(t)}`;
   const rm = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const hov = matchMedia('(hover:hover)').matches;
 
-  // Render dari data.js
+  // Tombol magnetik (perangkat dengan hover)
+  const mag = b => {
+    if (!hov) return;
+    b.addEventListener('pointermove', e => {
+      if (!window.gsap || rm) return;
+      const r = b.getBoundingClientRect();
+      gsap.to(b, { x: (e.clientX - r.left - r.width / 2) * .25, y: (e.clientY - r.top - r.height / 2) * .35, duration: .4, ease: 'power3.out' });
+    });
+    b.addEventListener('pointerleave', () => { if (window.gsap && !rm) gsap.to(b, { x: 0, y: 0, duration: .8, ease: 'elastic.out(1,.4)' }); });
+  };
+
+  // Karya
   $('#wl').innerHTML = S.projects.map(p => `
     <a class="row" data-r href="${p.url}" target="_blank" rel="noopener">
       <div><span class="tg">${p.tag}</span><h3>${p.t}</h3><p>${p.d}</p></div>
       <span class="th" style="--c:${p.c};${p.img ? `background-image:url(${p.img})` : ''}">${p.img ? '' : p.t.split(' ').pop()}</span>
       <span class="ar">Buka demo</span>
     </a>`).join('');
-  $('#pg').innerHTML = S.plans.map(p => `
-    <article class="pc" data-r>
+
+  // Layanan dan harga: tab kategori
+  const tabs = $('#tabs'), pg = $('#pg'), td = $('#tabd');
+  const li = (t, c) => `<li${c ? ` class="${c}"` : ''}>${t}</li>`;
+  const card = (p, k) => `
+    <article class="pc${p.hot ? ' hot' : ''}">${p.hot ? '<span class="bd">Paling populer</span>' : ''}
       <h3>${p.n}</h3>
-      <div class="pr"><small>Mulai dari</small>${p.p}</div>
+      <div class="pr">${p.p}<small>sekali bayar</small></div>
       <p>${p.d}</p>
-      <ul>${p.f.map(f => `<li>${f}</li>`).join('')}</ul>
-      <a class="btn mag" target="_blank" rel="noopener" href="${wa(`Halo Dam, saya tertarik dengan paket ${p.n}.`)}">Pesan paket ini</a>
-    </article>`).join('');
+      <ul>${p.f.map(t => li(t)).join('')}${(p.x || []).map(t => li(t, 'x')).join('')}</ul>
+      <a class="btn mag" target="_blank" rel="noopener" href="${wa(`Halo Dam, saya tertarik dengan paket ${p.n} (${k}).`)}">${p.hot ? 'Pilih paket ini' : 'Pesan sekarang'}</a>
+    </article>`;
+  const custom = c => `
+    <article class="pc hot cu">
+      <h3>${c.n}</h3><p>${c.d}</p>
+      <ul>${c.f.map(t => li(t)).join('')}</ul>
+      <a class="btn mag" target="_blank" rel="noopener" href="${wa('Halo Dam, saya ingin konsultasi soal website custom.')}">Konsultasi via WhatsApp</a>
+    </article>`;
+  const show = (i, anim) => {
+    const c = S.cats[i];
+    $$('.tb', tabs).forEach((b, j) => b.setAttribute('aria-selected', j === i));
+    td.textContent = c.d;
+    pg.innerHTML = c.custom ? custom(c.custom) : c.tiers.map(p => card(p, c.k)).join('');
+    $$('.mag', pg).forEach(mag);
+    if (anim && window.gsap && !rm) {
+      gsap.from('#pg .pc', { y: 30, opacity: 0, duration: .6, ease: 'power3.out', stagger: .08 });
+      if (window.ScrollTrigger) ScrollTrigger.refresh();
+    }
+  };
+  tabs.innerHTML = S.cats.map(c => `<button class="tb" role="tab">${c.k}</button>`).join('');
+  tabs.onclick = e => { const b = e.target.closest('.tb'); if (b) show([...tabs.children].indexOf(b), true); };
+  show(0);
   $('#note').textContent = S.note;
+
+  // Kontak
   $$('[data-wa]').forEach(a => { a.href = wa(a.dataset.wa || S.waText); a.target = '_blank'; a.rel = 'noopener'; });
   const m = $('[data-mail]'); m.href = 'mailto:' + S.email; $('b', m).textContent = S.email;
   const g = $('[data-gh]'); g.href = S.github; g.target = '_blank'; g.rel = 'noopener';
+  $$('.hero .mag').forEach(mag);
 
   // Tema: lingkaran meluas dari tombol (View Transitions), fallback cross-fade warna
   const set = t => { H.dataset.theme = t; try { localStorage.t = t; } catch (e) {} };
@@ -63,15 +102,6 @@
     y: 50, opacity: 0, duration: .9, ease: 'power3.out',
     scrollTrigger: { trigger: el, start: 'top 90%', toggleActions: 'play none restart reverse' }
   }));
-
-  // Tombol magnetik (perangkat dengan hover)
-  if (matchMedia('(hover:hover)').matches) $$('.mag').forEach(b => {
-    b.addEventListener('pointermove', e => {
-      const r = b.getBoundingClientRect();
-      gsap.to(b, { x: (e.clientX - r.left - r.width / 2) * .25, y: (e.clientY - r.top - r.height / 2) * .35, duration: .4, ease: 'power3.out' });
-    });
-    b.addEventListener('pointerleave', () => gsap.to(b, { x: 0, y: 0, duration: .8, ease: 'elastic.out(1,.4)' }));
-  });
 
   if (document.fonts) document.fonts.ready.then(() => ScrollTrigger.refresh());
 })();
